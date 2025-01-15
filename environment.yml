@@ -21,3 +21,4 @@ dependencies:
     - laspy
     # - submodules/diff-gaussian-rasterization
     # - submodules/simple-knn
+submodules/scaffold_filter

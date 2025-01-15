@@ -27,6 +27,7 @@ from scene.embedding import Embedding
 class GaussianModel:
 
     def setup_functions(self):
+        # todo: to be modified. thsi function is used to compute conv3D of voxels by python, and it's set Fasle by default
         def build_covariance_from_scaling_rotation(scaling, scaling_modifier, rotation):
             L = build_scaling_rotation(scaling_modifier * scaling, rotation)
             actual_covariance = L @ L.transpose(1, 2)
@@ -116,7 +117,7 @@ class GaussianModel:
         self.mlp_cov = nn.Sequential(
             nn.Linear(feat_dim+3+self.cov_dist_dim, feat_dim),
             nn.ReLU(True),
-            nn.Linear(feat_dim, 7*self.n_offsets),
+            nn.Linear(feat_dim, 6*self.n_offsets),
         ).cuda()
 
         self.color_dist_dim = 1 if self.add_color_dist else 0
@@ -257,11 +258,10 @@ class GaussianModel:
 
         dist2 = torch.clamp_min(distCUDA2(fused_point_cloud).float().cuda(), 0.0000001)
         # scales[:3] is the scale of anchor voxel, scales[3:] is the initial scale of neural gaussian
-        scales = torch.log(torch.sqrt(dist2))[...,None].repeat(1, 6)
+        scales = torch.log(torch.sqrt(dist2))[...,None].repeat(1, 5)
         
-        #todo 这里的初始化是统一设置为【1，0，0，0]， 即旋转矩阵为单位矩阵。是否根据初始点云的normal进行初始化？
         rots = torch.zeros((fused_point_cloud.shape[0], 4), device="cuda")
-        rots[:, 0] = 1
+        # rots[:, 0] = 1 # comment by 2DGS
 
         opacities = inverse_sigmoid(0.1 * torch.ones((fused_point_cloud.shape[0], 1), dtype=torch.float, device="cuda"))
 
@@ -644,7 +644,7 @@ class GaussianModel:
 
             
             if candidate_anchor.shape[0] > 0:
-                new_scaling = torch.ones_like(candidate_anchor).repeat([1,2]).float().cuda()*cur_size # *0.05
+                new_scaling = torch.ones([candidate_anchor.shape[0], 5]).float().cuda()*cur_size # *0.05
                 new_scaling = torch.log(new_scaling)
                 new_rotation = torch.zeros([candidate_anchor.shape[0], 4], device=candidate_anchor.device).float()
                 new_rotation[:,0] = 1.0
