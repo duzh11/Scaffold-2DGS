@@ -82,4 +82,50 @@ def camera_to_JSON(id, camera : Camera):
     }
     return camera_entry
 
+from typing import List, Optional, Tuple
+import torch
+from torch import Tensor
 
+def pick_indices_at_random(valid_mask, samples_per_frame):
+    indices = torch.nonzero(torch.ravel(valid_mask))
+    if samples_per_frame < len(indices):
+        which = torch.randperm(len(indices))[:samples_per_frame]
+        indices = indices[which]
+    return torch.ravel(indices)
+
+def get_colored_points_from_depth(
+    depths: Tensor,
+    rgbs: Tensor,
+    c2w: Tensor,
+    fx: float,
+    fy: float,
+    cx: int,
+    cy: int,
+    img_size: tuple,
+    mask: Optional[Tensor] = None,
+) -> Tuple[Tensor, Tensor]:
+    """Return colored pointclouds from depth and rgb frame and c2w. Optional masking.
+
+    Returns:
+        Tuple of (points, colors)
+    """
+    points, _ = get_means3d_backproj(
+        depths=depths.float(),
+        fx=fx,
+        fy=fy,
+        cx=cx,
+        cy=cy,
+        img_size=img_size,
+        c2w=c2w.float(),
+        device=depths.device,
+    )
+    points = points.squeeze(0)
+    if mask is not None:
+        if not torch.is_tensor(mask):
+            mask = torch.tensor(mask, device=depths.device)
+        colors = rgbs.view(-1, 3)[mask]
+        points = points[mask]
+    else:
+        colors = rgbs.view(-1, 3)
+        points = points
+    return (points, colors)

@@ -140,7 +140,7 @@ if __name__ == '__main__':
         for train_test_split in args.train_test_flag:
         
             output_path = f'{model_path}/{train_test_split}/{exp}'
-            output_infos = ['gt', 'renders', 'errors']
+            output_infos = ['gt', 'renders', 'errors', 'renders_mask', 'renders_expected_depth', 'renders_median_depth', 'renders_normal', 'renders_depth2normal']
             output_metrics={}
             
             # nvs metric

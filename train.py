@@ -44,6 +44,8 @@ from utils.image_utils import psnr
 from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, PipelineParams, OptimizationParams
 
+from utils.mesh_utils import GaussianExtractor, post_process_mesh
+
 # torch.set_num_threads(32)
 lpips_fn = lpips.LPIPS(net='vgg').to('cuda')
 
@@ -79,7 +81,7 @@ def saveRuntimeCode(dst: str) -> None:
     print('Backup Finished!')
 
 
-def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from, wandb=None, logger=None, ply_path=None):
+def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from, wandb=None, logger=None, ply_path=None):
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth, dataset.update_init_factor, dataset.update_hierachy_factor, dataset.use_feat_bank, 
@@ -156,6 +158,12 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
         dist_loss = lambda_dist * (rend_dist).mean()
 
         total_loss = loss + dist_loss + normal_loss
+        loss_dict = {'l1_loss': (1.0 - opt.lambda_dssim) * Ll1,
+                     'ssim_loss':  opt.lambda_dssim * ssim_loss,
+                     "scaling_loss" : 0.01*scaling_reg,
+                     "distort_loss": dist_loss,
+                     "d2n_loss": normal_loss,
+                     "total_loss": total_loss}
         
         total_loss.backward()
         
@@ -172,7 +180,7 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
                 progress_bar.close()
 
             # Log and save
-            training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background), wandb, logger)
+            training_report(tb_writer, iteration, loss_dict, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background), wandb, logger)
             if (iteration in saving_iterations):
                 logger.info("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
@@ -198,6 +206,8 @@ def training(dataset, opt, pipe, dataset_name, testing_iterations, saving_iterat
             if (iteration in checkpoint_iterations):
                 logger.info("\n[ITER {}] Saving Checkpoint".format(iteration))
                 torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
+    
+    return tb_writer
 
 def prepare_output_and_logger(args):    
     if not args.model_path:
@@ -221,15 +231,16 @@ def prepare_output_and_logger(args):
         print("Tensorboard not available: not logging progress")
     return tb_writer
 
-def training_report(tb_writer, dataset_name, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs, wandb=None, logger=None):
+def training_report(tb_writer, iteration, loss_dict, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs, wandb=None, logger=None):
     if tb_writer:
-        tb_writer.add_scalar(f'Train/l1_loss', Ll1.item(), iteration)
-        tb_writer.add_scalar(f'Train/total_loss', loss.item(), iteration)
+        for key, value in loss_dict.items():
+            tb_writer.add_scalar(f'Train/{key}', value.item(), iteration)
         tb_writer.add_scalar(f'Train/iter_time', elapsed, iteration)
 
 
     if wandb is not None:
-        wandb.log({"Train/l1_loss":Ll1, 'Train/total_loss':loss, }, step = iteration)
+        for key, value in loss_dict.items():
+            wandb.log({f"Train/{key}": value, }, step = iteration)
     
     # Report test and samples of training set
     if iteration in testing_iterations:
@@ -332,7 +343,7 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     
     return t_list, visible_count_list
 
-def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParams, skip_train=False, skip_test=False, wandb=None, tb_writer=None, dataset_name=None, logger=None):
+def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParams, far_plane=5.0, skip_train=False, skip_test=False, wandb=None, tb_writer=None, logger=None):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth, dataset.update_init_factor, dataset.update_hierachy_factor, dataset.use_feat_bank, 
                               dataset.appearance_dim, dataset.ratio, dataset.add_opacity_dist, dataset.add_cov_dist, dataset.add_color_dist)
@@ -344,25 +355,43 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
         if not os.path.exists(dataset.model_path):
             os.makedirs(dataset.model_path)
 
+        gaussExtractor = GaussianExtractor(gaussians, render, prefilter_voxel, pipeline, bg_color=bg_color)
+
         visible_count_train = []
+        train_dir = os.path.join(dataset.model_path, 'train', "ours_{}".format(scene.loaded_iter))
         if not skip_train:
-            t_train_list, visible_count_train  = render_set(dataset.model_path, "train", scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline, background)
-            train_fps = 1.0 / torch.tensor(t_train_list[5:]).mean()
-            logger.info(f'Train FPS: \033[1;35m{train_fps.item():.5f}\033[0m')
+            logger.info("export training images ...")
+            os.makedirs(train_dir, exist_ok=True)
+             
+            render_fps, visible_count_train, per_view_dict = gaussExtractor.reconstruction(scene.getTrainCameras())
+            with open(os.path.join(dataset.model_path, 'train', "ours_{}".format(scene.loaded_iter), "per_view_count.json"), 'w') as fp:
+                json.dump(per_view_dict, fp, indent=True) 
+
+            logger.info(f'Train FPS: \033[1;35m{render_fps.item():.5f}\033[0m')
             if tb_writer:
-                tb_writer.add_scalar('Metric/train_fps', train_fps.item(), 0)
+                tb_writer.add_scalar('Metric/train_fps', render_fps.item(), 0)
             if wandb is not None:
-                wandb.log({"Metric/train_fps":train_fps.item(), }, commit=False)
+                wandb.log({"Metric/train_fps":render_fps.item(), }, commit=False)
+
+            gaussExtractor.export_image(train_dir, far_plane=torch.tensor(far_plane))
 
         visible_count_test = []
+        test_dir = os.path.join(dataset.model_path, 'test', "ours_{}".format(scene.loaded_iter))   
         if not skip_test:
-            t_test_list, visible_count_test = render_set(dataset.model_path, "test", scene.loaded_iter, scene.getTestCameras(), gaussians, pipeline, background)
-            test_fps = 1.0 / torch.tensor(t_test_list[5:]).mean()
-            logger.info(f'Test FPS: \033[1;35m{test_fps.item():.5f}\033[0m')
+            logger.info("export testing images ...")
+            os.makedirs(test_dir, exist_ok=True)
+
+            render_fps, visible_count_test, per_view_dict = gaussExtractor.reconstruction(scene.getTestCameras())
+            with open(os.path.join(dataset.model_path, 'test', "ours_{}".format(scene.loaded_iter), "per_view_count.json"), 'w') as fp:
+                json.dump(per_view_dict, fp, indent=True) 
+            
+            logger.info(f'Test FPS: \033[1;35m{render_fps.item():.5f}\033[0m')
             if tb_writer:
-                tb_writer.add_scalar(f'Metric/test_fps', test_fps.item(), 0)
+                tb_writer.add_scalar(f'Metric/test_fps', render_fps.item(), 0)
             if wandb is not None:
-                wandb.log({"Metric/test_fps":test_fps, }, commit=False)
+                wandb.log({"Metric/test_fps":render_fps, }, commit=False)
+            
+            gaussExtractor.export_image(test_dir, far_plane=torch.tensor(far_plane))
     
     return visible_count_train, visible_count_test
 
@@ -380,7 +409,7 @@ def readImages(renders_dir, gt_dir):
     return renders, gts, image_names
 
 
-def evaluate(model_paths, flag_train_test='test', visible_count=None, wandb=None, tb_writer=None, dataset_name=None, logger=None):
+def evaluate(model_paths, flag_train_test='test', visible_count=None, wandb=None, tb_writer=None, logger=None):
 
     full_dict = {}
     per_view_dict = {}
@@ -481,6 +510,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_wandb', action='store_true', default=False)
     parser.add_argument("--test_iterations", nargs="+", type=int, default=[500, 3_000, 7_000, 20_000, 30_000])
     parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
+    parser.add_argument("--far_plane", type=float, default = 5.0)
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
     parser.add_argument("--start_checkpoint", type=str, default = None)
@@ -535,18 +565,18 @@ if __name__ == "__main__":
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
     
     # training
-    training(lp.extract(args), op.extract(args), pp.extract(args), f'{dataset}-{scene}',  args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from, wandb, logger)
+    tb_writer = training(lp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from, wandb, logger)
     if args.warmup:
         logger.info("\n Warmup finished! Reboot from last checkpoints")
         new_ply_path = os.path.join(args.model_path, f'point_cloud/iteration_{args.iterations}', 'point_cloud.ply')
-        training(lp.extract(args), op.extract(args), pp.extract(args), f'{dataset}-{scene}',  args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from, wandb=wandb, logger=logger, ply_path=new_ply_path)
+        tb_writer = training(lp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from, wandb=wandb, logger=logger, ply_path=new_ply_path)
 
     # All done
     logger.info("\nTraining complete.")
 
     # rendering
     logger.info(f'\nStarting Rendering~')
-    visible_count_train, visible_count_test = render_sets(lp.extract(args), -1, pp.extract(args), wandb=wandb, logger=logger)
+    visible_count_train, visible_count_test = render_sets(lp.extract(args), -1, pp.extract(args), args.far_plane, wandb=wandb, tb_writer=tb_writer, logger=logger)
     logger.info("\nRendering complete.")
 
     # calc metrics
