@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     json_name_lis = ['results_train', 'results_test']
     if args.source_name in ['scannetpp']:
-        json_name_lis += ['results_train_depth', 'results_test_depth', 'results_train_normal', 'results_test_normal']
+        json_name_lis += ['result_mesh_tsdf', 'results_train_depth', 'results_test_depth', 'results_train_normal', 'results_test_normal']
 
     for json_name in json_name_lis:
         ### Summary results of all scenes

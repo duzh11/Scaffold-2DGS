@@ -7,6 +7,12 @@ laspy
 colorama
 torch-scatter
 jaxtyping
+pandas
+mediapy
 opencv-python
-submodules/diff-gaussian-rasterization
+open3d
+trimesh
+nvitop
 submodules/simple-knn
+submodules/diff-surfel-rasterization
+submodules/scaffold-filter
