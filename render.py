@@ -89,9 +89,9 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
                     else:
                         name = 'fuse_bounded.ply'
                     depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0  else args.depth_trunc
-                    voxel_size = (depth_trunc / args.mesh_res) if args.voxel_size < 0 else args.voxel_size
-                    sdf_trunc = 5.0 * voxel_size if args.sdf_trunc < 0 else args.sdf_trunc
-                    mesh = gaussExtractor.extract_mesh_bounded(voxel_size=voxel_size, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc, usingmask=args.usingmask)
+                    tsdf_voxel = (depth_trunc / args.mesh_res) if args.tsdf_voxel < 0 else args.tsdf_voxel
+                    sdf_trunc = 5.0 * tsdf_voxel if args.sdf_trunc < 0 else args.sdf_trunc
+                    mesh = gaussExtractor.extract_mesh_bounded(voxel_size=tsdf_voxel, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc, usingmask=args.usingmask)
             
             # Poisson reconstruction
             elif args.mesh_type == 'poisson':
