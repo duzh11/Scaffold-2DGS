@@ -10,9 +10,10 @@ wandb*
 data
 *build/*
 *__pycache__*
-diff_rasterization/diff_rast.egg-info
-diff_rasterization/dist
-*.egg-info
+diff-surfel-rasterization/diff_surfel_rasterization.egg-info
+diff-surfel-rasterization/dist
+scaffold-filter/scaffold_filter.egg-info
+simple-knn/simple_knn.egg-info
 tensorboard_3d
 screenshots
 *.so
