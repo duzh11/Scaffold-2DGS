@@ -124,7 +124,7 @@ def evaluate_mesh(model_paths, mesh_gt, pred_mesh_types=['tsdf'],
         Dict of mesh metrics
     """
     exp_paths = f'{model_paths}/train'
-    mesh_pred_dict = {'tsdf': 'fuse_bounded_post.ply',
+    mesh_pred_dict = {'tsdf': 'fuse_bounded_wmask_post.ply',
                       'poisson': 'fuse_poisson_post.ply'
                     }
     for pred_mesh_type in pred_mesh_types:

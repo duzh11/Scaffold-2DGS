@@ -32,7 +32,7 @@ from argparse import ArgumentParser
 from arguments import ModelParams, PipelineParams, get_combined_args
 from gaussian_renderer import GaussianModel
 
-from utils.mesh_utils import GaussianExtractor, post_process_mesh
+from utils.mesh_utils import GaussianExtractor, post_process_mesh, clean_mesh_points_outside_bbox
      
 def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParams, args: ArgumentParser):
     with torch.no_grad():
@@ -91,7 +91,7 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
                     depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0  else args.depth_trunc
                     tsdf_voxel = (depth_trunc / args.mesh_res) if args.tsdf_voxel < 0 else args.tsdf_voxel
                     sdf_trunc = 5.0 * tsdf_voxel if args.sdf_trunc < 0 else args.sdf_trunc
-                    mesh = gaussExtractor.extract_mesh_bounded(voxel_size=tsdf_voxel, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc, usingmask=args.usingmask)
+                    mesh = gaussExtractor.extract_mesh_bounded(voxel_size=tsdf_voxel, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc, usingmask=args.usingmask, source_path=scene.source_path)
             
             # Poisson reconstruction
             elif args.mesh_type == 'poisson':
@@ -101,6 +101,12 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
             
             o3d.io.write_triangle_mesh(os.path.join(train_dir, name), mesh)
             print("mesh saved at {}".format(os.path.join(train_dir, name)))
+
+            # delete points outside the bounding box of the ground truth mesh
+            path_mesh_gt = os.path.join(scene.source_path, 'mesh.ply')
+            if os.path.exists(path_mesh_gt):
+                mesh = clean_mesh_points_outside_bbox(os.path.join(train_dir, name), path_mesh_gt, scale_bbox = args.scale_factor)
+
             # post-process the mesh and save, saving the largest N clusters
             mesh_post = post_process_mesh(mesh, cluster_to_keep=args.num_cluster)
             o3d.io.write_triangle_mesh(os.path.join(train_dir, name.replace('.ply', '_post.ply')), mesh_post)
@@ -126,6 +132,7 @@ if __name__ == "__main__":
     parser.add_argument("--unbounded", action="store_true", help='Mesh: using unbounded mode for meshing')
     parser.add_argument("--mesh_res", default=1024, type=int, help='Mesh: resolution for unbounded mesh extraction')
     parser.add_argument("--usingmask", action="store_true", help='Mesh: using mask for TSDF fusion')
+    parser.add_argument("--scale_factor", default=1.2, type=float, help='Mesh: clean mesh outside of the bbox')
     # poisson reconsturction
     parser.add_argument("--poisson_depth", default=10.0, type=float, help='Mesh: Poisson Octree max depth')
     

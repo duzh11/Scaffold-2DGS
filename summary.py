@@ -37,7 +37,8 @@ def summary_results(result_dirs, scene_lis, json_name = 'results_train', extensi
         # write into wandb
         if wandb is not None:
             for key, value in result['ours_30000'].items():
-                wandb.log({f'{scene}/{json_name}/{key}': value}, step = 30000)
+                if key in key_lis:
+                    wandb.log({f'{scene}/{json_name}/{key}': value}, step = 30000)
 
     # Calculate average metrics
     df = pd.DataFrame(data)
@@ -47,7 +48,8 @@ def summary_results(result_dirs, scene_lis, json_name = 'results_train', extensi
         average_lis[key] = df[key].mean()
         
         if wandb is not None:
-            wandb.log({f'{extension_name}/{json_name}/{key}': df[key].mean()}, commit=False)
+            if key in key_lis:
+                wandb.log({f'{extension_name}/{json_name}/{key}': df[key].mean()}, commit=False)
     
     data.append(average_lis)
 
@@ -94,6 +96,7 @@ if __name__ == "__main__":
     json_name_lis = ['results_train', 'results_test']
     if args.source_name in ['scannetpp']:
         json_name_lis += ['result_mesh_tsdf', 'results_train_depth', 'results_test_depth', 'results_train_normal', 'results_test_normal']
+        key_lis = ['fscore', 'chamfer', "rmse", "PSNR", "SSIM"]
 
     for json_name in json_name_lis:
         ### Summary results of all scenes

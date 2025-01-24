@@ -47,6 +47,50 @@ def post_process_mesh(mesh, cluster_to_keep=1000):
     print("num vertices post {}".format(len(mesh_0.vertices)))
     return mesh_0
 
+def get_aabb(points, scale=1.0):
+    '''
+    Args:
+        points; 1) numpy array (converted to '2)'; or 
+                2) open3d cloud
+    Return:
+        min_bound
+        max_bound
+        center: bary center of geometry coordinates
+    '''
+    if isinstance(points, np.ndarray):
+        point_cloud = o3d.geometry.PointCloud()
+        point_cloud.points = o3d.utility.Vector3dVector(points)
+        points = point_cloud
+    min_max_bounds = o3d.geometry.AxisAlignedBoundingBox.get_axis_aligned_bounding_box(points)
+    min_bound, max_bound = min_max_bounds.min_bound, min_max_bounds.max_bound
+    center = (min_bound+max_bound)/2
+    # center = points.get_center()
+    if scale != 1.0:
+        min_bound = center + scale * (min_bound-center)
+        max_bound = center + scale * (max_bound-center)
+
+    # logging.info(f"min_bound, max_bound, center: {min_bound, max_bound, center}")
+    return min_bound, max_bound, center
+
+def clean_mesh_points_outside_bbox(path_mesh, 
+                                   path_mesh_gt, 
+                                   scale_bbox = 1.0):
+    print('clean points outside the bbox of the gt mesh...')
+
+    mesh_o3d = o3d.io.read_triangle_mesh(path_mesh)
+    points = np.array(mesh_o3d.vertices)
+    mask_inside_all = np.zeros(len(points)).astype(bool)
+
+    mesh_gt = o3d.io.read_triangle_mesh(path_mesh_gt)
+    min_bound, max_bound, center = get_aabb(mesh_gt, scale_bbox)
+    mask_low = (points - min_bound) >= 0
+    mask_high = (points - max_bound) <= 0
+    mask_inside_all = (mask_low.sum(axis=-1) == 3) & (mask_high.sum(axis=-1) == 3)
+
+    mesh_o3d.remove_vertices_by_mask(mask_inside_all==False)
+
+    return mesh_o3d
+
 def to_cam_open3d(viewpoint_stack):
     camera_traj = []
     for i, viewpoint_cam in enumerate(viewpoint_stack):
@@ -181,7 +225,7 @@ class GaussianExtractor(object):
         print(f"Use at least {2.0 * self.radius:.2f} for depth_trunc")
 
     @torch.no_grad()
-    def extract_mesh_bounded(self, voxel_size=0.004, sdf_trunc=0.02, depth_trunc=3, mask_backgrond=True, usingmask=False):
+    def extract_mesh_bounded(self, voxel_size=0.004, sdf_trunc=0.02, depth_trunc=3, mask_backgrond=True, usingmask=False, source_path=None):
         """
         Perform TSDF fusion given a fixed depth range, used in the paper.
         
@@ -208,9 +252,19 @@ class GaussianExtractor(object):
             rgb = self.rgbmaps[i]
             depth = self.depthmaps[i]
 
-            # * if require using mask and we have mask provided, use it
-            if usingmask and mask_backgrond and (self.viewpoint_stack[i].gt_alpha_mask is not None):
-                depth[(self.viewpoint_stack[i].gt_alpha_mask < 0.5)] = 0
+            # * if require using mask, use it
+            if usingmask and mask_backgrond:
+                # if given mask, use it
+                if (self.viewpoint_stack[i].gt_alpha_mask is not None):
+                    depth[(self.viewpoint_stack[i].gt_alpha_mask < 0.5)] = 0
+                
+                # design for scannetpp, use the depth mask
+                else:
+                    import cv2
+                    gt_depth_file = os.path.join(source_path, 'depths', self.viewpoint_stack[i].image_name + '.png')
+                    gt_depth = cv2.imread(gt_depth_file, cv2.IMREAD_UNCHANGED)/1000.0
+                    gt_depth = cv2.resize(gt_depth, (depth.shape[2], depth.shape[1]), interpolation=cv2.INTER_NEAREST)
+                    depth[torch.tensor(gt_depth[None, ...]) < 0.01] = 0
 
             depth[self.alphamaps[i] < alpha_thres] = 0
 

@@ -21,8 +21,17 @@ for scene in scannetpp_scenes:
     cmd_lis.append("python train.py" + train_args)
 
     # # rendering images
-    render_args = source_args + exp_args + " --skip_train --skip_test --depth_ratio 1.0 -r 2 --eval --num_cluster 1 --depth_trunc 5.0 --tsdf_voxel 0.01"
+    render_args = source_args + exp_args + " --skip_train --skip_test --depth_ratio 1.0 -r 2 --eval"
+    if scene in ["8b5caf3398"]:
+        render_args += " --depth_trunc 5.0 --tsdf_voxel 0.01 --num_cluster 5"
+    elif scene in ["21d970d8de"]:
+        render_args += " --depth_trunc 5.0 --tsdf_voxel 0.01 --num_cluster 20"
+    elif scene in ['578511c8a9']:
+        render_args += " --depth_trunc 8.0 --tsdf_voxel 0.02 --num_cluster 1 --scale_factor 1.5"
+    else:    
+        render_args += " --depth_trunc 5.0 --tsdf_voxel 0.01 --num_cluster 1"
     cmd_lis.append(f"python render.py" + render_args)
+    cmd_lis.append(f"python render.py" + render_args + " --usingmask")
 
     # # NVS metricd and visualization
     # cmd_lis.append(f"python metrics.py" + exp_args + ' -f train')
