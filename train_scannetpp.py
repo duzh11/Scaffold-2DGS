@@ -17,7 +17,7 @@ for scene in scannetpp_scenes:
     exp_args = " -m " + exp_name+"/"+scene
     
     # training
-    train_args = source_args + exp_args + f" --eval --use_wandb --lod 0 --gpu {gpu} --port {port} --voxel_size 0.005 --update_init_factor 16 --appearance_dim 0 --ratio 1 -r 2 --depth_ratio 1.0 --lambda_dist 10"
+    train_args = source_args + exp_args + f" --eval --use_wandb --lod 0 --gpu {gpu} --port {port} --voxel_size 0.01 --update_init_factor 16 --appearance_dim 0 --ratio 1 -r 2 --depth_ratio 1.0 --lambda_dist 10"
     cmd_lis.append("python train.py" + train_args)
 
     # # rendering images
