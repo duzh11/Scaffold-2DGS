@@ -23,6 +23,7 @@ import trimesh
 import torchvision
 import utils.vis_utils as VISUils
 from utils.camera_utils import pick_indices_at_random, get_colored_points_from_depth
+from gaussian_renderer import generate_neural_gaussians
 
 def post_process_mesh(mesh, cluster_to_keep=1000):
     """
@@ -358,7 +359,12 @@ class GaussianExtractor(object):
         print(f"Define the voxel_size as {voxel_size}")
         sdf_function = lambda x: compute_unbounded_tsdf(x, inv_contraction, voxel_size)
         from utils.mcube_utils import marching_cubes_with_contraction
-        R = contract(normalize(self.gaussians.get_xyz)).norm(dim=-1).cpu().numpy()
+
+        ### compute the boundary of TSDF volume
+        # compute xyz of all neural gaussians
+        gaussian_xyz = generate_neural_gaussians(self.viewpoint_stack[0], self.gaussians)[0]
+        # compute the boundary
+        R = contract(normalize(gaussian_xyz)).norm(dim=-1).cpu().numpy()
         R = np.quantile(R, q=0.95)
         R = min(R+0.01, 1.9)
 
