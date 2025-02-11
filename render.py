@@ -99,7 +99,8 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
                         name = 'fuse_bounded_handmade_wmask.ply'
                     else:
                         name = 'fuse_bounded_handmade.ply'
-                        mesh = gaussExtractor.extract_mesh_bounded_handmade(resolution=args.mesh_res)
+                    depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0  else args.depth_trunc
+                    mesh = gaussExtractor.extract_mesh_bounded_handmade(resolution=args.mesh_res, depth_trunc=depth_trunc)
                 
                 else:
                     print(f"{args.scene_type} is supported!")

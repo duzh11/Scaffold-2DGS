@@ -19,9 +19,7 @@ def marching_cubes_with_contraction(
     resolution=512,
     bounding_box_min=(-1.0, -1.0, -1.0),
     bounding_box_max=(1.0, 1.0, 1.0),
-    return_mesh=False,
     level=0,
-    simplify_mesh=True,
     inv_contraction=None,
     max_range=32.0,
 ):
