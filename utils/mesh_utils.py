@@ -323,7 +323,7 @@ class GaussianExtractor(object):
             
             sdf_trunc = 5 * voxel_size
 
-            tsdfs = torch.ones_like(samples[:,0]) * 1
+            tsdfs = -torch.ones_like(samples[:,0])
             rgbs = torch.zeros((samples.shape[0], 3)).cuda()
             weights = torch.zeros_like(samples[:,0])
 
@@ -362,7 +362,7 @@ class GaussianExtractor(object):
         gaussian_xyz = generate_neural_gaussians(self.viewpoint_stack[0], self.gaussians)[0]
         # compute the boundary
         R = normalize(gaussian_xyz).norm(dim=-1).cpu().numpy()
-        R = np.quantile(R, q=0.95) + 1.5
+        R = np.quantile(R, q=0.95)
 
         N = resolution
         voxel_size = (2*R/N)
