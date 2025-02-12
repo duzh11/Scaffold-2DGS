@@ -329,7 +329,7 @@ class GaussianExtractor(object):
 
             for i, cam_o3d in tqdm(enumerate(to_cam_open3d(self.viewpoint_stack)), desc="TSDF integration progress"):
                 depthmap = self.depthmaps[i]
-                depthmap[depthmap > depth_trunc] = 0
+                depthmap[depthmap > depth_trunc] = 0 #todo: 貌似不能简单的置为0，marching cube只能提取出一个闭合的mesh，会出现TSDF 的不连续
                 
                 sdf, rgb, mask_proj = compute_sdf_perframe(i, samples,
                     depthmap = depthmap,
