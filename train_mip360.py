@@ -6,11 +6,9 @@ current_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 port = random.randint(10000, 30000)
 
 data_root = '/home/zhenhua2023/Proj/3Dv_NVS/GS-NVS/Data/Mip-NeRF360'
-exp_name = f'../exps/experiments_v0/Mip-NeRF360-2025-01-16_17:53:28'
-# mipnerf360_outdoor_scenes = ["bicycle", "flowers", "garden", "stump", "treehill"]
-# mipnerf360_indoor_scenes = ["room", "counter", "kitchen", "bonsai"]
-mipnerf360_outdoor_scenes = []
-mipnerf360_indoor_scenes = ["kitchen", "bonsai"]
+exp_name = f'../exps/experiments_v0/Mip-NeRF360-{current_time}'
+mipnerf360_outdoor_scenes = ["bicycle", "flowers", "garden", "stump", "treehill"]
+mipnerf360_indoor_scenes = ["room", "counter", "kitchen", "bonsai"]
 gpu = -1
 
 cmd_lis = []
@@ -28,14 +26,14 @@ for scene in (mipnerf360_outdoor_scenes+mipnerf360_indoor_scenes):
     cmd_lis.append("python train.py" + train_args)
 
     # rendering images, and mesh
-    # cmd_lis.append(f"python render.py" + source_args + exp_args + " --skip_train --skip_test")
+    cmd_lis.append(f"python render.py" + source_args + exp_args + " --skip_train --skip_test")
 
     # # NVS metricd and visualization
     # cmd_lis.append(f"python metrics.py" + exp_args + ' -f train')
     # cmd_lis.append(f"python metrics.py" + exp_args + ' -f test')
     cmd_lis.append(f"python vis_outputs.py" + exp_args + ' -f train test')
 
-cmd_lis.append(f'python summary.py -m ' + exp_name)
+cmd_lis.append(f'python summary.py --use_wandb -m ' + exp_name)
 
 # run cmd
 for cmd in cmd_lis:

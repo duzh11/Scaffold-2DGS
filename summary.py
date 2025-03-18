@@ -94,6 +94,7 @@ if __name__ == "__main__":
         wandb = None
 
     json_name_lis = ['results_train', 'results_test']
+    key_lis = ["PSNR", "SSIM", "LPIPS"]
     if args.source_name in ['scannetpp']:
         json_name_lis += ['result_mesh_tsdf', 'results_train_depth', 'results_test_depth', 'results_train_normal', 'results_test_normal']
         key_lis = ['fscore', 'chamfer', "rmse", "PSNR", "SSIM"]
