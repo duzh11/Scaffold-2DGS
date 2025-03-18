@@ -246,8 +246,11 @@ def training_report(tb_writer, iteration, loss_dict, elapsed, testing_iterations
     if iteration in testing_iterations:
         scene.gaussians.eval()
         torch.cuda.empty_cache()
-        validation_configs = ({'name': 'test', 'cameras' : [scene.getTestCameras()[idx % len(scene.getTestCameras())] for idx in range(5, 30, 5)]}, 
-                              {'name': 'train', 'cameras' : [scene.getTrainCameras()[idx % len(scene.getTrainCameras())] for idx in range(5, 30, 5)]})
+        
+        validation_configs = ({'name': 'train', 'cameras' : [scene.getTrainCameras()[idx % len(scene.getTrainCameras())] for idx in range(5, 30, 5)]}, )
+        
+        if len(scene.getTestCameras()) > 0:
+            validation_configs += ({'name': 'test', 'cameras' : [scene.getTestCameras()[idx % len(scene.getTestCameras())] for idx in range(5, 30, 5)]}, )
 
         for config in validation_configs:
             if config['cameras'] and len(config['cameras']) > 0:
@@ -343,7 +346,7 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     
     return t_list, visible_count_list
 
-def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParams, far_plane=5.0, skip_train=False, skip_test=False, wandb=None, tb_writer=None, logger=None):
+def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParams, near_plane=0.0, far_plane=5.0, skip_train=False, skip_test=False, wandb=None, tb_writer=None, logger=None):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.feat_dim, dataset.n_offsets, dataset.voxel_size, dataset.update_depth, dataset.update_init_factor, dataset.update_hierachy_factor, dataset.use_feat_bank, 
                               dataset.appearance_dim, dataset.ratio, dataset.add_opacity_dist, dataset.add_cov_dist, dataset.add_color_dist)
@@ -373,11 +376,11 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
             if wandb is not None:
                 wandb.log({"Metric/train_fps":render_fps.item(), }, commit=False)
 
-            gaussExtractor.export_image(train_dir, far_plane=torch.tensor(far_plane))
+            gaussExtractor.export_image(train_dir, near_plane=torch.tensor(near_plane), far_plane=torch.tensor(far_plane))
 
         visible_count_test = []
         test_dir = os.path.join(dataset.model_path, 'test', "ours_{}".format(scene.loaded_iter))   
-        if not skip_test:
+        if (not skip_test) and (len(scene.getTestCameras()) > 0):
             logger.info("export testing images ...")
             os.makedirs(test_dir, exist_ok=True)
 
@@ -391,7 +394,7 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
             if wandb is not None:
                 wandb.log({"Metric/test_fps":render_fps, }, commit=False)
             
-            gaussExtractor.export_image(test_dir, far_plane=torch.tensor(far_plane))
+            gaussExtractor.export_image(test_dir, near_plane=torch.tensor(near_plane), far_plane=torch.tensor(far_plane))
     
     return visible_count_train, visible_count_test
 
@@ -510,6 +513,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_wandb', action='store_true', default=False)
     parser.add_argument("--test_iterations", nargs="+", type=int, default=[500, 3_000, 7_000, 20_000, 30_000])
     parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
+    parser.add_argument("--near_plane", type=float, default = 5.0)
     parser.add_argument("--far_plane", type=float, default = 5.0)
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
@@ -576,7 +580,7 @@ if __name__ == "__main__":
 
     # rendering
     logger.info(f'\nStarting Rendering~')
-    visible_count_train, visible_count_test = render_sets(lp.extract(args), -1, pp.extract(args), args.far_plane, wandb=wandb, tb_writer=tb_writer, logger=logger)
+    visible_count_train, visible_count_test = render_sets(lp.extract(args), -1, pp.extract(args), args.near_plane, args.far_plane, wandb=wandb, tb_writer=tb_writer, logger=logger)
     logger.info("\nRendering complete.")
 
     # calc metrics
