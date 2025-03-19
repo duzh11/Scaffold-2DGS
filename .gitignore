@@ -19,3 +19,5 @@ screenshots
 *.so
 train_mip360_*.py
 train_scannetpp_*.py
+train_dtu_*.py
+train_tnt_*.py

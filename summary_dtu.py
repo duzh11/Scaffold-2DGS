@@ -6,9 +6,8 @@ import pandas as pd
 import argparse
 from argparse import Namespace
 
-# dtu_scenes = ['scan24', 'scan37', 'scan40', 'scan55', 'scan63', 'scan65', 'scan69', 'scan83', \
-#               'scan97', 'scan105', 'scan106', 'scan110', 'scan114', 'scan118', 'scan122']
-dtu_scenes = ['scan24', 'scan37', 'scan40', 'scan55', 'scan63']
+dtu_scenes = ['scan24', 'scan37', 'scan40', 'scan55', 'scan63', 'scan65', 'scan69', 'scan83', \
+              'scan97', 'scan105', 'scan106', 'scan110', 'scan114', 'scan118', 'scan122']
 
 def summary_results(result_dirs, scene_lis, json_name = 'vis/results.json', extension_name = 'summary', wandb=None):
     if len(scene_lis) == 0:
@@ -79,7 +78,7 @@ if __name__ == "__main__":
         run = wandb.init(
             # Set the project where this run will be logged
             project="DTU",
-            name=f'radegs-{args.model_path.split("/")[-2]}-{args.model_path.split("/")[-1]}',
+            name=f'scaffold-2dgs-{args.model_path.split("/")[-2]}-{args.model_path.split("/")[-1]}',
             # Track hyperparameters and run metadata
             settings=wandb.Settings(start_method="fork"),
             config=vars(args_cfgfile)

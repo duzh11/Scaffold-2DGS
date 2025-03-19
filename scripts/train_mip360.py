@@ -18,7 +18,7 @@ for scene in (mipnerf360_outdoor_scenes+mipnerf360_indoor_scenes):
     exp_args = " -m " + exp_name+"/"+scene
     
     # training
-    train_args = source_args + exp_args + f" --eval --use_wandb --lod 0 --gpu {gpu} --port {port} --voxel_size 0.001 --update_init_factor 16 --appearance_dim 0 --ratio 1 --far_plane 20.0"
+    train_args = source_args + exp_args + f" --eval --test_iterations -1 --use_wandb --lod 0 --gpu {gpu} --port {port} --voxel_size 0.001 --update_init_factor 16 --appearance_dim 0 --ratio 1 --far_plane 20.0"
     if scene in mipnerf360_outdoor_scenes:
         train_args += " -i images_4"
     elif scene in mipnerf360_indoor_scenes:

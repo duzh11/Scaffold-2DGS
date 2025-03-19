@@ -9,8 +9,7 @@ data_root = '../../Data/DTU'
 exp_name = f'../exps/experiments_v0/DTU-{current_time}'
 DTU_Official = '../../Data/Offical_DTU_Dataset'
 
-# dtu_scenes = ['scan24', 'scan37', 'scan40', 'scan55', 'scan63', 'scan65', 'scan69', 'scan83', 'scan97', 'scan105', 'scan106', 'scan110', 'scan114', 'scan118', 'scan122']
-dtu_scenes = ['scan24', 'scan37', 'scan40', 'scan55', 'scan63']
+dtu_scenes = ['scan24', 'scan37', 'scan40', 'scan55', 'scan63', 'scan65', 'scan69', 'scan83', 'scan97', 'scan105', 'scan106', 'scan110', 'scan114', 'scan118', 'scan122']
 gpu = -1
 
 cmd_lis = []
@@ -21,7 +20,7 @@ for scene in dtu_scenes:
     exp_args = " -m " + exp_name+"/"+scene
     
     # training
-    train_args = source_args + exp_args + f" --depth_ratio 1.0 -r 2 --test_iterations -1 --use_wandb --lod 0 --gpu {gpu} --port {port} --voxel_size 0.001 --update_init_factor 16 --appearance_dim 0 --ratio 1 --lambda_dist 100"
+    train_args = source_args + exp_args + f" --depth_ratio 1.0 -r 2 --test_iterations -1 --use_wandb --lod 0 --gpu {gpu} --port {port} --voxel_size 0.001 --update_init_factor 16 --appearance_dim 0 --ratio 1 --lambda_dist 1000"
     train_args += " --near_plane 1.5 --far_plane 5.0"
     cmd_lis.append("python train.py" + train_args)
 
@@ -45,7 +44,7 @@ for scene in dtu_scenes:
     cmd_lis.append(string)
     
 
-cmd_lis.append(f'python summary_dtu.py -m ' + exp_name)
+cmd_lis.append(f'python summary_dtu.py --use_wandb -m ' + exp_name)
 
 # run cmd
 for cmd in cmd_lis:
