@@ -513,7 +513,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_wandb', action='store_true', default=False)
     parser.add_argument("--test_iterations", nargs="+", type=int, default=[500, 3_000, 7_000, 20_000, 30_000])
     parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
-    parser.add_argument("--near_plane", type=float, default = 5.0)
+    parser.add_argument("--near_plane", type=float, default = 0.0)
     parser.add_argument("--far_plane", type=float, default = 5.0)
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
