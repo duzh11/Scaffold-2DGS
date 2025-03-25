@@ -13,11 +13,31 @@ from scene.cameras import Camera
 import numpy as np
 from utils.general_utils import PILtoTorch
 from utils.graphics_utils import fov2focal
+import cv2
 
 WARNED = False
 
-def loadCam(args, id, cam_info, resolution_scale):
+def loadCam(args, id, cam_info, resolution_scale, is_nerf_synthetic=False):
     orig_w, orig_h = cam_info.image.size
+
+    if cam_info.depth_path != "":
+        try:
+            if is_nerf_synthetic:
+                invdepthmap = cv2.imread(cam_info.depth_path, -1).astype(np.float32) / 512
+            else:
+                invdepthmap = cv2.imread(cam_info.depth_path, -1).astype(np.float32) / float(2**16)
+
+        except FileNotFoundError:
+            print(f"Error: The depth file at path '{cam_info.depth_path}' was not found.")
+            raise
+        except IOError:
+            print(f"Error: Unable to open the image file '{cam_info.depth_path}'. It may be corrupted or an unsupported format.")
+            raise
+        except Exception as e:
+            print(f"An unexpected error occurred when trying to read depth at {cam_info.depth_path}: {e}")
+            raise
+    else:
+        invdepthmap = None
 
     if args.resolution in [1, 2, 4, 8]:
         resolution = round(orig_w/(resolution_scale * args.resolution)), round(orig_h/(resolution_scale * args.resolution))
@@ -45,9 +65,9 @@ def loadCam(args, id, cam_info, resolution_scale):
     if len(cam_info.image.split()) > 3:
         loaded_mask = PILtoTorch(cam_info.image.split()[3], resolution)
 
-    return Camera(colmap_id=cam_info.uid, R=cam_info.R, T=cam_info.T, 
-                  FoVx=cam_info.FovX, FoVy=cam_info.FovY, 
-                  image=gt_image, gt_alpha_mask=loaded_mask,
+    return Camera(resolution, colmap_id=cam_info.uid, R=cam_info.R, T=cam_info.T, 
+                  FoVx=cam_info.FovX, FoVy=cam_info.FovY, depth_params=cam_info.depth_params,
+                  image=gt_image, invdepthmap=invdepthmap, gt_alpha_mask=loaded_mask,
                   image_name=cam_info.image_name, uid=id, data_device=args.data_device)
 
 def cameraList_from_camInfos(cam_infos, resolution_scale, args):

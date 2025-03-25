@@ -37,7 +37,7 @@ from utils.loss_utils import l1_loss, ssim
 from gaussian_renderer import prefilter_voxel, render, network_gui
 import sys
 from scene import Scene, GaussianModel
-from utils.general_utils import safe_state
+from utils.general_utils import safe_state, get_expon_lr_func
 import uuid
 from tqdm import tqdm
 from utils.image_utils import psnr
@@ -95,6 +95,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     iter_start = torch.cuda.Event(enable_timing = True)
     iter_end = torch.cuda.Event(enable_timing = True)
 
+    depth_l1_weight = get_expon_lr_func(opt.depth_l1_weight_init, opt.depth_l1_weight_final, max_steps=10_000)
+
     viewpoint_stack = None
     ema_loss_for_log = 0.0
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
@@ -146,6 +148,20 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         scaling_reg = scaling.prod(dim=1).mean()
         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * ssim_loss + 0.01*scaling_reg
 
+        # Depth regularization
+        Ll1depth_pure = 0.0
+        if depth_l1_weight(iteration) > 0 and viewpoint_cam.depth_reliable:
+            Depth = render_pkg["expected_depth"]
+            invDepth = 1 / Depth
+            mono_invdepth = viewpoint_cam.invdepthmap.cuda()
+            depth_mask = viewpoint_cam.depth_mask.cuda()
+
+            Ll1depth_pure = torch.abs((invDepth  - mono_invdepth) * depth_mask).mean()
+            Ll1depth = depth_l1_weight(iteration) * Ll1depth_pure 
+            loss += Ll1depth
+        else:
+            Ll1depth = torch.tensor(0.0)
+
         # regularization
         lambda_normal = opt.lambda_normal if iteration > 7000 else 0.0
         lambda_dist = opt.lambda_dist if iteration > 3000 else 0.0
@@ -161,6 +177,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         loss_dict = {'l1_loss': (1.0 - opt.lambda_dssim) * Ll1,
                      'ssim_loss':  opt.lambda_dssim * ssim_loss,
                      "scaling_loss" : 0.01*scaling_reg,
+                     "depth_loss": Ll1depth,
                      "distort_loss": dist_loss,
                      "d2n_loss": normal_loss,
                      "total_loss": total_loss}

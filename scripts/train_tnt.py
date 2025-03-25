@@ -28,7 +28,7 @@ for scene in tnt_scenes:
         train_args += " --lambda_dist 100"
     elif scene in tnt_large_scenes:
         train_args += " --lambda_dist 10"
-    cmd_lis.append("python train.py" + train_args)
+    # cmd_lis.append("python train.py" + train_args)
 
     # # rendering mesh
     render_args = source_args + exp_args + " --depth_ratio 1.0 -r 2 --eval --skip_train --skip_test"
@@ -37,12 +37,12 @@ for scene in tnt_scenes:
     elif scene in tnt_large_scenes:
         render_args += " --num_cluster 1 --tsdf_voxel 0.006 --sdf_trunc 0.024 --depth_trunc 4.5"
 
-    cmd_lis.append(f"python render.py" + render_args)
+    # cmd_lis.append(f"python render.py" + render_args)
 
     # # NVS metricd and visualization
     # cmd_lis.append(f"python metrics.py" + exp_args + ' -f train')
     # cmd_lis.append(f"python metrics.py" + exp_args + ' -f test')
-    cmd_lis.append(f"python vis_outputs.py" + exp_args + ' -f train test')
+    # cmd_lis.append(f"python vis_outputs.py" + exp_args + ' -f train test')
 
     # evaluate mesh, depth & normal
     # require open3d 0.9
@@ -51,9 +51,9 @@ for scene in tnt_scenes:
         f"--dataset-dir {TNT_GT}/{scene} " + \
         f"--traj-path {data_root}/{scene}/{scene}_COLMAP_SfM.log " + \
         f"--ply-path {ply_file}"
-    # cmd_lis.append(string)
+    cmd_lis.append(string)
     
-cmd_lis.append(f'python summary.py -s tnt -m ' + exp_name)
+# cmd_lis.append(f'python summary.py -s tnt -m ' + exp_name)
 
 # run cmd
 for cmd in cmd_lis:

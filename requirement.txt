@@ -16,3 +16,11 @@ nvitop
 submodules/simple-knn
 submodules/diff-surfel-rasterization
 submodules/scaffold-filter
+
+# depth-anything
+gradio_imageslider
+gradio==4.29.0
+matplotlib
+triton
+xFormers
+opencv-python
