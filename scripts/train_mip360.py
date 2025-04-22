@@ -6,7 +6,7 @@ current_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 port = random.randint(10000, 30000)
 
 data_root = '/home/zhenhua2023/Proj/3Dv_NVS/GS-NVS/Data/Mip-NeRF360'
-exp_name = f'../exps/experiments_v0/Mip-NeRF360-{current_time}'
+exp_name = f'./exps/experiments_v0/Mip-NeRF360-{current_time}'
 mipnerf360_outdoor_scenes = ["bicycle", "flowers", "garden", "stump", "treehill"]
 mipnerf360_indoor_scenes = ["room", "counter", "kitchen", "bonsai"]
 gpu = -1

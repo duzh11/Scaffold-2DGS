@@ -385,8 +385,8 @@ def evaluate_normal(model_paths, gt_normal_files, train_test_flag='train', show_
 if __name__ == '__main__':
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
-    parser.add_argument('--source_path', '-s', type=str, default='../../Data/ScanNetpp/8b5caf3398')
-    parser.add_argument('--model_paths', '-m', type=str, default='../exps/full/scannetpp/8b5caf3398')
+    parser.add_argument('--source_path', '-s', type=str, default='../Data/ScanNetpp/8b5caf3398')
+    parser.add_argument('--model_paths', '-m', type=str, default='./exps/full/scannetpp/8b5caf3398')
     parser.add_argument('--train_test_flag', '-f', nargs="+", type=str, default=['train'])
     parser.add_argument("--pred_mesh_types", '-p', nargs="+", type=str, default=['tsdf'])
     parser.add_argument("--skip_mesh", action="store_true")

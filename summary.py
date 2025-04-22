@@ -65,7 +65,7 @@ def summary_results(result_dirs, scene_lis, json_name = 'results_train', extensi
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process results from JSON files.")
     parser.add_argument("--source_name", "-s", help="source path", default="mipnerf360")
-    parser.add_argument("--model_path", "-m", help="model path", default="../exps/full/mipnerf360")
+    parser.add_argument("--model_path", "-m", help="model path", default="./exps/full/mipnerf360")
     parser.add_argument("--scene_lis", nargs="+", type=str, default=[], help="scene list")
     parser.add_argument('--use_wandb', action='store_true', default=False)
     args = parser.parse_args()

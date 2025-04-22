@@ -89,7 +89,7 @@ def concat_outputs(output_path, output_infos, output_metrics=None, resolution=1)
     '''
     concat output_maps to a lis_imgs
     inputs:
-        - output_path: path of exps, e.g., '../exps/full/DTU/scan24/train/ours_30000'
+        - output_path: path of exps, e.g., './exps/full/DTU/scan24/train/ours_30000'
         - output_infos: an array of output_maps, e.g., ['gt', 'renders', 'expect_depth']
         - output_metric: a dict of output_metrics, e.g., {'PSNR': [xxx, xxx], 'SSIM': [xxx, xxx]}
         - resize_shape: resize to shape
@@ -131,7 +131,7 @@ def concat_outputs(output_path, output_infos, output_metrics=None, resolution=1)
 if __name__ == '__main__':
     parser = ArgumentParser(description="Training script parameters")
     parser.add_argument('--exp', type=str, default="ours_30000")
-    parser.add_argument('--model_paths', '-m', nargs="+", type=str, default=['../exps/full/DTU/scan24'])
+    parser.add_argument('--model_paths', '-m', nargs="+", type=str, default=['./exps/full/DTU/scan24'])
     parser.add_argument('--train_test_flag', '-f', nargs="+", type=str, default=['train'])
     args = parser.parse_args()
     

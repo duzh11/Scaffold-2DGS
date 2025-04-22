@@ -5,9 +5,9 @@ os.system("ulimit -n 4096")
 current_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 port = random.randint(10000, 30000)
 
-data_root = '../../Data/TNT'
-exp_name = f'../exps/experiments_v0/TNT-{current_time}'
-TNT_GT = '../../Data/Official_TNT_dataset'
+data_root = '../Data/TNT'
+exp_name = f'./exps/experiments_v0/TNT-{current_time}'
+TNT_GT = '../Data/Official_TNT_dataset'
 
 tnt_360_scenes = ['Barn', 'Caterpillar', 'Ignatius', 'Truck']
 tnt_large_scenes = ['Meetingroom', 'Courthouse']

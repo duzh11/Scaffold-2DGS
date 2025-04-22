@@ -5,9 +5,9 @@ os.system("ulimit -n 4096")
 current_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 port = random.randint(10000, 30000)
 
-data_root = '../../Data/DTU'
-exp_name = f'../exps/experiments_v0/DTU-{current_time}'
-DTU_Official = '../../Data/Offical_DTU_Dataset'
+data_root = '../Data/DTU'
+exp_name = f'./exps/experiments_v0/DTU-{current_time}'
+DTU_Official = '../Data/Offical_DTU_Dataset'
 
 dtu_scenes = ['scan24', 'scan37', 'scan40', 'scan55', 'scan63', 'scan65', 'scan69', 'scan83', 'scan97', 'scan105', 'scan106', 'scan110', 'scan114', 'scan118', 'scan122']
 gpu = -1

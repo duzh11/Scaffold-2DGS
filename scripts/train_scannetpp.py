@@ -5,8 +5,8 @@ os.system("ulimit -n 4096")
 current_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 port = random.randint(10000, 30000)
 
-data_root = '../../Data/ScanNetpp'
-exp_name = f'../exps/experiments_v0/scannetpp-{current_time}'
+data_root = '../Data/ScanNetpp'
+exp_name = f'./exps/experiments_v0/scannetpp-{current_time}'
 scannetpp_scenes = ['8b5caf3398', '116456116b', '13c3e046d7', '0a184cf634', '578511c8a9', '21d970d8de']
 gpu = -1
 
