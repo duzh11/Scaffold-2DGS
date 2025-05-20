@@ -283,7 +283,7 @@ class GaussianExtractor(object):
         return mesh
 
     @torch.no_grad()
-    def extract_mesh_bounded_handmade(self, resolution=1024, depth_trunc=3):
+    def extract_mesh_bounded_handmade(self, resolution=512, depth_trunc=3):
         """
        copy from 2dgs, extracting meshes from bounded scenes by TSDF fusion 
         return o3d.mesh
