@@ -288,7 +288,7 @@ class GaussianExtractor(object):
        copy from 2dgs, extracting meshes from bounded scenes by TSDF fusion 
         return o3d.mesh
         """
-        def compute_sdf_perframe(i, points, depthmap, rgbmap, cam_o3d):
+        def compute_sdf_perframe(i, points, depthmap, rgbmap, cam_o3d, depth_trunc):
             """
                 compute per frame sdf
             """
@@ -310,9 +310,13 @@ class GaussianExtractor(object):
                                         
             sampled_depth = torch.nn.functional.grid_sample(depthmap.cuda()[None], pix_coords_clone[None, None], mode='bilinear', padding_mode='border', align_corners=True).reshape(-1, 1)
             sampled_rgb = torch.nn.functional.grid_sample(rgbmap.cuda()[None], pix_coords_clone[None, None], mode='bilinear', padding_mode='border', align_corners=True).reshape(3,-1).T
+            
+            mask_depth = ((sampled_depth > 0) & (sampled_depth < depth_trunc)).squeeze()
+            mask_samples = mask_proj & mask_depth
 
             sdf = (sampled_depth-z)
-            return sdf, sampled_rgb, mask_proj
+            
+            return sdf, sampled_rgb, mask_samples
 
         def compute_bounded_tsdf(samples, voxel_size, depth_trunc=3, inv_contraction=None, return_rgb=False):
             """
@@ -323,31 +327,31 @@ class GaussianExtractor(object):
             
             sdf_trunc = 5 * voxel_size
 
-            tsdfs = -torch.ones_like(samples[:,0])
+            tsdfs = -torch.ones_like(samples[:,0]) # initialize to -1 for bounded scenes, as distant regions will not be updated
             rgbs = torch.zeros((samples.shape[0], 3)).cuda()
             weights = torch.zeros_like(samples[:,0])
 
             for i, cam_o3d in tqdm(enumerate(to_cam_open3d(self.viewpoint_stack)), desc="TSDF integration progress"):
                 depthmap = self.depthmaps[i]
-                depthmap[depthmap > depth_trunc] = 0 #todo: 貌似不能简单的置为0，marching cube只能提取出一个闭合的mesh，会出现TSDF 的不连续
                 
-                sdf, rgb, mask_proj = compute_sdf_perframe(i, samples,
+                sdf, rgb, mask_samples = compute_sdf_perframe(i, samples,
                     depthmap = depthmap,
                     rgbmap = self.rgbmaps[i],
                     cam_o3d = cam_o3d,
+                    depth_trunc = depth_trunc,
                 )
 
                 sdf = sdf.flatten()
                 
                 # volume integration
-                mask_proj = mask_proj & (sdf > -sdf_trunc) # mask out voxels beyond trucaction distance behind surface
-                sdf = torch.clamp(sdf/sdf_trunc, min=-1, max=1)[mask_proj]
-                w = weights[mask_proj]
+                mask_samples = mask_samples & (sdf > -sdf_trunc) # mask out voxels beyond trucaction distance behind surface
+                sdf = torch.clamp(sdf/sdf_trunc, min=-1, max=1)[mask_samples]
+                w = weights[mask_samples]
                 wp = w + 1
-                tsdfs[mask_proj] = (tsdfs[mask_proj] * w + sdf) / wp
-                rgbs[mask_proj] = (rgbs[mask_proj] * w[:,None] + rgb[mask_proj]) / wp[:,None]
+                tsdfs[mask_samples] = (tsdfs[mask_samples] * w + sdf) / wp
+                rgbs[mask_samples] = (rgbs[mask_samples] * w[:,None] + rgb[mask_samples]) / wp[:,None]
                 # update weight
-                weights[mask_proj] = wp
+                weights[mask_samples] = wp
             
             if return_rgb:
                 return tsdfs, rgbs

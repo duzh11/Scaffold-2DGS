@@ -249,7 +249,7 @@ class TSDFVolume:
         )
     else:  # CPU mode: integrate voxel volume (vectorized implementation)
       # Convert voxel grid coordinates to pixel coordinates
-      cam_pts = self.vox2world(self._vol_origin, self.vox_coords, self._voxel_size)
+      cam_pts = self.vox2world(self._vol_origin, self.vox_coords, self._voxel_size) # project ALL voxels directly!!!
       cam_pts = rigid_transform(cam_pts, np.linalg.inv(cam_pose))
       pix_z = cam_pts[:, 2]
       pix = self.cam2pix(cam_pts, cam_intr)
@@ -266,8 +266,8 @@ class TSDFVolume:
 
       # Integrate TSDF
       depth_diff = depth_val - pix_z
-      valid_pts = np.logical_and(depth_val > 0, depth_diff >= -self._trunc_margin)
-      dist = np.minimum(1, depth_diff / self._trunc_margin)
+      valid_pts = np.logical_and(depth_val > 0, depth_diff >= -self._trunc_margin) # filter too distant voxels
+      dist = np.minimum(1, depth_diff / self._trunc_margin) # trunc distance
       valid_vox_x = self.vox_coords[valid_pts, 0]
       valid_vox_y = self.vox_coords[valid_pts, 1]
       valid_vox_z = self.vox_coords[valid_pts, 2]
