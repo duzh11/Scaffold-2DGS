@@ -283,7 +283,7 @@ class GaussianExtractor(object):
         return mesh
 
     @torch.no_grad()
-    def extract_mesh_bounded_handmade(self, resolution=512, depth_trunc=3):
+    def extract_mesh_bounded_uniformtsdf(self, resolution=512, depth_trunc=3):
         """
        copy from 2dgs, extracting meshes from bounded scenes by TSDF fusion 
         return o3d.mesh
@@ -354,21 +354,18 @@ class GaussianExtractor(object):
 
             return tsdfs
 
-        normalize = lambda x: (x - self.center) / self.radius
-        unnormalize = lambda x: (x * self.radius) + self.center
-
         ### compute the boundary of TSDF volume
         # compute xyz of all neural gaussians
         gaussian_xyz = generate_neural_gaussians(self.viewpoint_stack[0], self.gaussians)[0]
         # compute the boundary
-        R = normalize(gaussian_xyz).norm(dim=-1).cpu().numpy()
+        R = gaussian_xyz.norm(dim=-1).cpu().numpy()
         R = np.quantile(R, q=0.95)
 
         N = resolution
         voxel_size = (2*R/N)
         print(f"Computing sdf gird resolution {N} x {N} x {N}")
         print(f"Define the voxel_size as {voxel_size}")
-        sdf_function = lambda x: compute_bounded_tsdf(x, voxel_size = voxel_size, depth_trunc = depth_trunc, inv_contraction = unnormalize)
+        sdf_function = lambda x: compute_bounded_tsdf(x, voxel_size = voxel_size, depth_trunc = depth_trunc)
         
         from utils.mcube_utils import marching_cubes_with_contraction
         mesh = marching_cubes_with_contraction(
@@ -377,7 +374,6 @@ class GaussianExtractor(object):
             bounding_box_max=(R, R, R),
             level=0,
             resolution=N,
-            inv_contraction = unnormalize,
         )
         
         # coloring the mesh

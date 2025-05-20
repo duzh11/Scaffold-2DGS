@@ -94,13 +94,13 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
                     sdf_trunc = 5.0 * tsdf_voxel if args.sdf_trunc < 0 else args.sdf_trunc
                     mesh = gaussExtractor.extract_mesh_bounded(voxel_size=tsdf_voxel, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc, usingmask=args.usingmask, source_path=scene.source_path)
                 
-                elif args.scene_type == "bounded_handmade":
+                elif args.scene_type == "bounded_uniformtsdf":
                     if args.usingmask:
-                        name = 'fuse_bounded_handmade_wmask.ply'
+                        name = 'fuse_bounded_uniformtsdf_wmask.ply'
                     else:
-                        name = 'fuse_bounded_handmade.ply'
+                        name = 'fuse_bounded_uniformtsdf.ply'
                     depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0  else args.depth_trunc
-                    mesh = gaussExtractor.extract_mesh_bounded_handmade(resolution=args.mesh_res, depth_trunc=depth_trunc)
+                    mesh = gaussExtractor.extract_mesh_bounded_uniformtsdf(resolution=args.mesh_res, depth_trunc=depth_trunc)
                 
                 else:
                     print(f"{args.scene_type} is supported!")
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     parser.add_argument("--depth_trunc", default=-1.0, type=float, help='Mesh: Max depth range for TSDF')
     parser.add_argument("--sdf_trunc", default=-1.0, type=float, help='Mesh: truncation value for TSDF')
     parser.add_argument("--num_cluster", default=50, type=int, help='Mesh: number of connected clusters to export')
-    parser.add_argument("--scene_type", default="bounded", help='Mesh: bounded / bounded_handmade/ unbounded scene')
+    parser.add_argument("--scene_type", default="bounded", help='Mesh: bounded / bounded_uniformtsdf/ unbounded scene')
     parser.add_argument("--mesh_res", default=1024, type=int, help='Mesh: resolution for unbounded mesh extraction')
     parser.add_argument("--usingmask", action="store_true", help='Mesh: using mask for TSDF fusion')
     parser.add_argument("--scale_factor", default=1.2, type=float, help='Mesh: clean mesh outside of the bbox')
