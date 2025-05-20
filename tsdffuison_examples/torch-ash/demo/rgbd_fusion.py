@@ -370,6 +370,6 @@ if __name__ == "__main__":
         iso_value=0.0,
         weight_thr=1,
     )
-    o3d.visualization.draw([mesh, mesh_filtered])
+    # o3d.visualization.draw([mesh, mesh_filtered])
 
-    torch.save(fuser.grid.state_dict(), "grid.pt")
+    # torch.save(fuser.grid.state_dict(), "grid.pt")

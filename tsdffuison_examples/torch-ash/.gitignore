@@ -142,3 +142,5 @@ runs/
 *.sens
 .ccls-cache/
 logs/
+
+Data/
