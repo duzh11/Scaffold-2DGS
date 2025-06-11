@@ -95,12 +95,16 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
                     mesh = gaussExtractor.extract_mesh_bounded(voxel_size=tsdf_voxel, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc, usingmask=args.usingmask, source_path=scene.source_path)
                 
                 elif args.scene_type == "bounded_uniformtsdf":
-                    if args.usingmask:
-                        name = 'fuse_bounded_uniformtsdf_wmask.ply'
-                    else:
-                        name = 'fuse_bounded_uniformtsdf.ply'
+                    name = 'fuse_bounded_uniformtsdf.ply'
                     depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0  else args.depth_trunc
                     mesh = gaussExtractor.extract_mesh_bounded_uniformtsdf(resolution=args.mesh_res, depth_trunc=depth_trunc)
+
+                elif args.scene_type == "bounded_svotsdf":
+                    name = 'fuse_bounded_svotsdf.ply'
+                    depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0  else args.depth_trunc
+                    tsdf_voxel = (depth_trunc / args.mesh_res) if args.tsdf_voxel < 0 else args.tsdf_voxel
+                    sdf_trunc = 5.0 * tsdf_voxel if args.sdf_trunc < 0 else args.sdf_trunc
+                    mesh = gaussExtractor.extract_mesh_bounded_svotsdf(voxel_size=tsdf_voxel, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc)
                 
                 else:
                     print(f"{args.scene_type} is supported!")

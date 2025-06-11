@@ -359,6 +359,7 @@ class GaussianExtractor(object):
             return tsdfs
 
         ### compute the boundary of TSDF volume
+        print("Running tsdf volume integration using uniformtsdf...")
         # compute xyz of all neural gaussians
         gaussian_xyz = generate_neural_gaussians(self.viewpoint_stack[0], self.gaussians)[0]
         # compute the boundary
@@ -387,6 +388,19 @@ class GaussianExtractor(object):
         _, rgbs = compute_bounded_tsdf(torch.tensor(np.asarray(mesh.vertices)).float().cuda(), voxel_size = voxel_size, depth_trunc = depth_trunc, return_rgb=True)
         mesh.vertex_colors = o3d.utility.Vector3dVector(rgbs.cpu().numpy())
         return mesh
+
+    @torch.no_grad()
+    def extract_mesh_bounded_svotsdf(self, voxel_size=0.01, sdf_trunc=0.02, depth_trunc=3):
+        print("Running tsdf volume integration using svo...")
+
+        import utils.svo_utils as svo_utils
+
+        for i, cam_o3d in tqdm(enumerate(to_cam_open3d(self.viewpoint_stack)), desc="TSDF integration progress"):
+            rgb = self.rgbmaps[i]
+            depth = self.depthmaps[i]
+            frame = svo_utils.RGBDFrame(i, rgb.permute(1, 2, 0), depth.squeeze(0), cam_o3d.intrinsic.intrinsic_matrix, ref_pose=cam_o3d.extrinsic)
+
+        return None
 
     @torch.no_grad()
     def extract_mesh_unbounded(self, resolution=1024):
