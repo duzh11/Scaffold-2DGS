@@ -394,13 +394,14 @@ class GaussianExtractor(object):
         print("Running tsdf volume integration using svo...")
 
         import utils.svo_utils as svo_utils
+        self.mapper = svo_utils.Mapping(voxel_size = voxel_size, 
+                                        sdf_trunc = sdf_trunc,
+                                        depth_trunc = depth_trunc,
+                                        num_vertexes = 500000)
 
-        for i, cam_o3d in tqdm(enumerate(to_cam_open3d(self.viewpoint_stack)), desc="TSDF integration progress"):
-            rgb = self.rgbmaps[i]
-            depth = self.depthmaps[i]
-            frame = svo_utils.RGBDFrame(i, rgb.permute(1, 2, 0), depth.squeeze(0), cam_o3d.intrinsic.intrinsic_matrix, ref_pose=cam_o3d.extrinsic)
+        mesh = self.mapper.run(to_cam_open3d(self.viewpoint_stack), self.rgbmaps, self.depthmaps)
 
-        return None
+        return mesh
 
     @torch.no_grad()
     def extract_mesh_unbounded(self, resolution=1024):
