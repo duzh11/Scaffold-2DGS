@@ -130,7 +130,6 @@ class TSDFFusion:
     @torch.no_grad()
     def prune_by_mesh_connected_components_(self, ratio_to_largest_component=0.5):
         torch.cuda.empty_cache()
-
         sdf = self.grid.embeddings[..., 0].contiguous()
         weight = self.grid.embeddings[..., 4].contiguous()
         mesh = self.grid.marching_cubes(
@@ -177,6 +176,17 @@ class TSDFFusion:
             cell_size=self.grid.cell_size,
             device=self.grid.device,
         )
+        # dummy_grid = BoundedSparseDenseGrid(
+        #     in_dim=3,
+        #     num_embeddings=self.grid.num_embeddings,
+        #     embedding_dim=1,  # dummy
+        #     grid_dim=self.grid.grid_dim,
+        #     sparse_grid_dim=self.grid.sparse_grid_dim,
+        #     bbox_min=self.grid.bbox_min,
+        #     bbox_max=self.grid.bbox_max,
+        #     device=self.grid.device,
+        # )        
+
         # Use a small dilation around
         dummy_grid.spatial_init_(xyz, dilation=1, bidirectional=True)
 
@@ -186,6 +196,8 @@ class TSDFFusion:
         grid_coords_unpruned = grid_coords_unpruned.view(-1, 3)
         grid_coords_kept = grid_coords_kept.view(-1, 3)
 
+        #* 这里必须要self.grid指定--voxel_size，即按照unbounded grid的方式来执行，prune出来的engine特别小
+        #* 原因在于BoundedSparseDenseGrid限定grid的范围为0+，因为知道bbox_min，而UnboundedSpareseDenseGrid则没有
         hashset = HashSet(
             key_dim=3, capacity=int(len(grid_coords_unpruned) * 1.2), device=self.device
         )
@@ -357,7 +369,7 @@ if __name__ == "__main__":
     fuser.prune_by_mesh_connected_components_(ratio_to_largest_component=0.5)
 
     # 7x7x7 gaussian filter
-    fuser.grid.gaussian_filter_(size=7, sigma=0.1)
+    fuser.grid.gaussian_filter_(size=7, sigma=0.1) #? 如何没有这行代码，没法write_triangle_mesh
 
     sdf = fuser.grid.embeddings[..., 0].contiguous()
     weight = fuser.grid.embeddings[..., 4].contiguous()
@@ -370,6 +382,8 @@ if __name__ == "__main__":
         iso_value=0.0,
         weight_thr=1,
     )
+    # o3d.io.write_triangle_mesh("mesh_filtered.ply", mesh_filtered.to_legacy())
+
     # o3d.visualization.draw([mesh, mesh_filtered])
 
     # torch.save(fuser.grid.state_dict(), "grid.pt")
