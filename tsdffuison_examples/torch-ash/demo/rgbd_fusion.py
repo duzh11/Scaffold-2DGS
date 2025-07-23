@@ -196,7 +196,7 @@ class TSDFFusion:
         grid_coords_unpruned = grid_coords_unpruned.view(-1, 3)
         grid_coords_kept = grid_coords_kept.view(-1, 3)
 
-        #* 这里必须要self.grid指定--voxel_size，即按照unbounded grid的方式来执行，prune出来的engine特别小
+        #* 这里必须要self.grid指定--voxel_size，即按照unbounded grid的方式来执行，否则prune出来的engine特别小（相当于全prune了）
         #* 原因在于BoundedSparseDenseGrid限定grid的范围为0+，因为知道bbox_min，而UnboundedSpareseDenseGrid则没有
         hashset = HashSet(
             key_dim=3, capacity=int(len(grid_coords_unpruned) * 1.2), device=self.device

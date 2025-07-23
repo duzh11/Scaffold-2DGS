@@ -57,6 +57,10 @@ class PlainVoxels(nn.Module):
     def fuse_dataset(self, dataset, dilation):
         fuser = TSDFFusion(self.grid, dilation=dilation)
         fuser.fuse_dataset(dataset)
+
+        mesh = self.marching_cubes()
+        o3d.io.write_triangle_mesh("mesh.ply", mesh.to_legacy())
+
         fuser.prune_by_mesh_connected_components_(ratio_to_largest_component=0.5)
 
         print(f"hash map size after pruning: {self.grid.engine.size()}")
@@ -69,7 +73,7 @@ class PlainVoxels(nn.Module):
             t_max=far,
             t_step=0.01,  # no use
         )
-
+        # 在射线上均匀采样，并只保留落在稀疏-稠密体素网格有效区域内的点
         (ray_indices, t_nears, t_fars, prefix_sum_ray_samples,) = self.grid.ray_sample(
             rays_o=rays_o,
             rays_d=rays_d,
@@ -261,10 +265,11 @@ if __name__ == "__main__":
     )
 
     model = PlainVoxels(voxel_size=args.voxel_size, device=torch.device("cuda:0"))
-    dilation = 2
+    dilation = 1 if args.depth_type == "sensor" else 2
     model.fuse_dataset(dataset, dilation)
     model.grid.gaussian_filter_(7, 1)
     mesh = model.marching_cubes()
+    o3d.io.write_triangle_mesh("mesh_filtered.ply", mesh.to_legacy())
     # o3d.visualization.draw([mesh, model.occupancy_lineset()])
 
     train_batch_size = args.train_batch_size
