@@ -265,6 +265,85 @@ class TSDFFusion:
         embedding[..., 1:4] = rgb_updated
         self.grid.embeddings[grid_indices, cell_indices] = embedding
 
+@torch.no_grad()
+def draw_grids2cubes(grid_centers, voxel_size, file_name="sparse_grid_cubes.ply"):
+    geometries = o3d.geometry.TriangleMesh()
+    for center in grid_centers:
+        cube = o3d.geometry.TriangleMesh.create_box(width=voxel_size, height=voxel_size, depth=voxel_size)
+        cube.translate(center.cpu().numpy() + voxel_size / 2)
+        cube.paint_uniform_color([0.6, 0.8, 1.0])
+        geometries += cube
+    o3d.io.write_triangle_mesh(file_name, geometries)
+    print("drawing grids to cubes, saved to", file_name)
+
+@torch.no_grad()
+def draw_grids2wireframes(grid_centers, voxel_size, file_name="sparse_grid_wireframes.ply"):
+    all_points = []
+    all_lines = []
+    point_count = 0
+    half_size = voxel_size / 2
+    
+    # 立方体的8个顶点（相对于中心的偏移）
+    cube_offsets = np.array([
+        [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+        [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+    ]) * half_size
+    
+    # 立方体的12条边
+    cube_edges = np.array([
+        [0, 1], [1, 2], [2, 3], [3, 0],
+        [4, 5], [5, 6], [6, 7], [7, 4],
+        [0, 4], [1, 5], [2, 6], [3, 7]
+    ])
+    
+    for center in grid_centers:
+        cube_vertices = center + cube_offsets
+        all_points.append(cube_vertices)
+        cube_lines = cube_edges + point_count
+        all_lines.append(cube_lines)
+        point_count += 8
+
+    all_points = np.concatenate(all_points, axis=0)
+    all_lines = np.concatenate(all_lines, axis=0)
+    
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(all_points)
+    line_set.lines = o3d.utility.Vector2iVector(all_lines)
+
+    o3d.io.write_line_set(file_name, line_set)
+    print("drawing grids to wireframes, saved to", file_name)
+
+@torch.no_grad()
+def visualize_sparse_grid(grid, file_name="sparse_grid_cubes.ply", method="cube"):
+    grid_coords, _, _, _ = grid.items()
+    grid_coords = grid_coords.view(-1, 3).cpu().float()
+    grid_centers = grid.transform_cell_to_world(grid_coords * grid.grid_dim) # debug: 使用BoundedSparseGrid时会报错，cuda和cpu不一致
+
+    voxel_size = grid.cell_size * grid.grid_dim
+
+    if method == "cube":
+        draw_grids2cubes(grid_centers, voxel_size, file_name=file_name)
+    elif method == "wireframe":
+        draw_grids2wireframes(grid_centers, voxel_size, file_name=file_name)
+
+@torch.no_grad()
+def visualize_dense_grids(grid, file_name="dense_grid_cubes.ply", method="cube"):
+    grid_coords, cell_coords, grid_indices, cell_indices = grid.items()
+    grid_dim = grid.grid_dim
+    cell_size = grid.cell_size
+
+    # 获取所有cell的世界坐标
+    all_cell_centers = []
+    for i in range(len(grid_coords)):
+        cell_xyz = grid.cell_to_world(grid_coords[i:i+1], torch.arange(grid_dim**3).view(-1,1,1).expand(-1,1,3))
+        cell_xyz = cell_xyz.view(-1, 3).cpu().float()
+        all_cell_centers.append(cell_xyz)
+    all_cell_centers = torch.cat(all_cell_centers, dim=0)
+
+    if method == "cube":
+        draw_grids2cubes(all_cell_centers, cell_size, file_name=file_name)
+    elif method == "wireframe":
+        draw_grids2wireframes(all_cell_centers, cell_size, file_name=file_name)
 
 if __name__ == "__main__":
     import argparse
@@ -324,6 +403,7 @@ if __name__ == "__main__":
     dilation = 1 if args.depth_type == "sensor" else 2
     fuser = TSDFFusion(grid, dilation)
     fuser.fuse_dataset(dataset)
+    visualize_sparse_grid(fuser.grid, file_name="sparse_grid.ply", method="wireframe")
     print(f"hash map size after fusion: {fuser.grid.engine.size()}")
 
     bbox_min, bbox_max = fuser.grid.get_bbox()
@@ -332,6 +412,7 @@ if __name__ == "__main__":
             min_bound=bbox_min.cpu().numpy(), max_bound=bbox_max.cpu().numpy()
         )
     )
+    o3d.io.write_line_set("bbox.ply", bbox_lineset)
 
     # sdf_fn and normal_fn
     def color_fn(x):
@@ -367,9 +448,11 @@ if __name__ == "__main__":
     o3d.io.write_triangle_mesh("mesh.ply", mesh.to_legacy())
 
     fuser.prune_by_mesh_connected_components_(ratio_to_largest_component=0.5)
+    visualize_sparse_grid(fuser.grid, file_name="sparse_grid_pruned.ply", method="wireframe")
 
     # 7x7x7 gaussian filter
-    fuser.grid.gaussian_filter_(size=7, sigma=0.1) #? 如何没有这行代码，没法write_triangle_mesh
+    # fuser.grid.gaussian_filter_(size=7, sigma=0.1) #? 如何没有这行代码，没法write_triangle_mesh
+    fuser.grid.gaussian_filter_(size=1, sigma=0.1) #* 可以保证不进行gaussian_filter
 
     sdf = fuser.grid.embeddings[..., 0].contiguous()
     weight = fuser.grid.embeddings[..., 4].contiguous()
@@ -382,7 +465,7 @@ if __name__ == "__main__":
         iso_value=0.0,
         weight_thr=1,
     )
-    # o3d.io.write_triangle_mesh("mesh_filtered.ply", mesh_filtered.to_legacy())
+    o3d.io.write_triangle_mesh("mesh_filtered.ply", mesh_filtered.to_legacy())
 
     # o3d.visualization.draw([mesh, mesh_filtered])
 

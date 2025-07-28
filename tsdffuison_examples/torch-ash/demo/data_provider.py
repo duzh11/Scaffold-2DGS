@@ -180,6 +180,17 @@ class ImageDataset(torch.utils.data.Dataset):
             (-1, 4, 4)
         )
 
+        # filter out invalid poses
+        valid_mask = ~np.isinf(self.poses_unnormalized).any(axis=(1, 2))
+        invalid_indices = np.where(~valid_mask)[0]
+        if (~valid_mask).sum()>0:
+            print(f"Found {valid_mask.sum()} invalid poses: {invalid_indices}")
+            self.image_fnames = self.image_fnames[valid_mask]
+            self.depth_fnames = self.depth_fnames[valid_mask]
+            self.depth_scales = self.depth_scales[valid_mask]
+            self.normal_fnames = self.normal_fnames[valid_mask] if len(self.normal_fnames) > 0 else []
+            self.poses_unnormalized = self.poses_unnormalized[valid_mask]
+
         assert len(self.image_fnames) == len(
             self.depth_fnames
         ), f"{len(self.image_fnames)} != {len(self.depth_fnames)}"
