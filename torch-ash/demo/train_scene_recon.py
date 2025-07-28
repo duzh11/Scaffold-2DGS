@@ -325,12 +325,14 @@ if __name__ == "__main__":
         normal_loss_l1 = F.l1_loss(result["normal"], normal_gt)
         normal_loss_cos = (1 - (result["normal"] * normal_gt).sum(dim=-1)).mean()
 
-        # depth_loss = depth_loss_fn(
-        #     result["depth"].view(-1, 32, 32),
-        #     depth_gt.view(-1, 32, 32),
-        #     torch.ones_like(depth_gt.view(-1, 32, 32)).bool(),
-        # )
-        depth_loss = F.l1_loss(result["depth"], depth_gt)
+        if args.depth_type == "learned":
+            depth_loss = depth_loss_fn(
+                result["depth"].view(-1, 32, 32),
+                depth_gt.view(-1, 32, 32),
+                torch.ones_like(depth_gt.view(-1, 32, 32)).bool(),
+            )
+        elif args.depth_type == "sensor":
+            depth_loss = F.l1_loss(result["depth"], depth_gt)
 
         eikonal_loss_ray = (torch.norm(result["sdf_grads"], dim=-1) - 1).abs().mean()
 
