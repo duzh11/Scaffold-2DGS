@@ -144,3 +144,4 @@ runs/
 logs/
 
 Data/
+*.sh

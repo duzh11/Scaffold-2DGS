@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -55,13 +57,13 @@ class PlainVoxels(nn.Module):
             {"params": self.sdf_to_sigma.parameters(), "lr": 1e-4},
         ]
 
-    def fuse_dataset(self, dataset, dilation, path=None):
+    def fuse_dataset(self, dataset, dilation, exps=None):
         fuser = TSDFFusion(self.grid, dilation=dilation)
         fuser.fuse_dataset(dataset)
 
         mesh = self.marching_cubes()
-        if path is not None:
-            o3d.io.write_triangle_mesh(f"{path}/mesh.ply", mesh.to_legacy())
+        if exps is not None:
+            o3d.io.write_triangle_mesh(f"{exps}/mesh.ply", mesh.to_legacy())
 
         fuser.prune_by_mesh_connected_components_(ratio_to_largest_component=0.5)
 
@@ -255,8 +257,9 @@ if __name__ == "__main__":
 
     import datetime
 
-    path = f"logs/{args.path.split('/')[-2]}/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    writer = SummaryWriter(path)
+    scene = args.path.split("/")[-2]
+    exps = f"logs/{scene}/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    writer = SummaryWriter(exps)
 
     # Load data
     dataset = ImageDataset(
@@ -269,11 +272,11 @@ if __name__ == "__main__":
 
     model = PlainVoxels(voxel_size=args.voxel_size, num_grids=args.num_grids, device=torch.device("cuda:0"))
     dilation = 1 if args.depth_type == "sensor" else 2
-    model.fuse_dataset(dataset, dilation, path=f"logs/{args.path.split('/')[-2]}/")
-    model.grid.gaussian_filter_(7, 1)
+    model.fuse_dataset(dataset, dilation, exps=f"logs/{scene}/")
+    model.grid.gaussian_filter_(1, 1)
     mesh = model.marching_cubes()
-    o3d.io.write_triangle_mesh(f"logs/{args.path.split('/')[-2]}/mesh_filtered.ply", mesh.to_legacy())
-    o3d.io.write_line_set(f"logs/{args.path.split('/')[-2]}/occ_lineset.ply", model.occupancy_lineset().to_legacy())
+    o3d.io.write_triangle_mesh(f"logs/{scene}/mesh_filtered.ply", mesh.to_legacy())
+    o3d.io.write_line_set(f"logs/{scene}/occ_lineset_filtered.ply", model.occupancy_lineset().to_legacy())
 
     train_batch_size = args.train_batch_size
     eval_batch_size = args.eval_batch_size
@@ -370,7 +373,7 @@ if __name__ == "__main__":
 
         if step % 500 == 0:
             mesh = model.marching_cubes()
-            o3d.io.write_triangle_mesh(f"{path}/mesh_{step}.ply", mesh.to_legacy())
+            o3d.io.write_triangle_mesh(f"{exps}/mesh_{step}.ply", mesh.to_legacy())
 
             im_rgbs = []
             im_weights = []
@@ -426,3 +429,5 @@ if __name__ == "__main__":
             if step > 0:
                 scheduler.step()
                 reset_jitter_()
+    
+    os.system(f"python demo/eval_mesh.py --path {args.path} --exps {exps}")
