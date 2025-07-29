@@ -273,7 +273,7 @@ if __name__ == "__main__":
     model = PlainVoxels(voxel_size=args.voxel_size, num_grids=args.num_grids, device=torch.device("cuda:0"))
     dilation = 1 if args.depth_type == "sensor" else 2
     model.fuse_dataset(dataset, dilation, exps=f"logs/{scene}/")
-    model.grid.gaussian_filter_(1, 1)
+    model.grid.gaussian_filter_(7, 1)
     mesh = model.marching_cubes()
     o3d.io.write_triangle_mesh(f"logs/{scene}/mesh_filtered.ply", mesh.to_legacy())
     o3d.io.write_line_set(f"logs/{scene}/occ_lineset_filtered.ply", model.occupancy_lineset().to_legacy())
@@ -335,7 +335,7 @@ if __name__ == "__main__":
                 torch.ones_like(depth_gt.view(-1, 32, 32)).bool(),
             )
         elif args.depth_type == "sensor":
-            depth_loss = F.l1_loss(result["depth"], depth_gt)
+            depth_loss = F.l1_loss(result["depth"], depth_gt * datum["depth_scale"])
 
         eikonal_loss_ray = (torch.norm(result["sdf_grads"], dim=-1) - 1).abs().mean()
 
@@ -345,9 +345,9 @@ if __name__ == "__main__":
 
         loss = (
             rgb_loss
-            + 0.05 * normal_loss_l1
-            + 0.05 * normal_loss_cos
-            + 0.1 * depth_loss
+            + 0.1 * normal_loss_l1
+            + 0.1 * normal_loss_cos
+            + 0.5 * depth_loss
             + 0.1 * eikonal_loss_ray
             + 0.1 * eikonal_loss_uniform
         )
