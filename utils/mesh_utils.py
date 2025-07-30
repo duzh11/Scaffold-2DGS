@@ -604,13 +604,6 @@ class GaussianExtractor(object):
 
         ### Optional: save depth/normal maps
         render_outputs = ['mask', 'expected_depth', 'median_depth', 'normal', 'depth2normal']
-        render_dict = {
-            'mask': self.alphamaps,
-            'expected_depth': self.expected_depthmaps,
-            'median_depth': self.median_depthmaps,
-            'normal': self.normals,
-            'depth2normal': self.depth_normals
-        }
 
         outputs_path = []
         for output_idx in render_outputs:

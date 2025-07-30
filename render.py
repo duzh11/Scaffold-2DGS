@@ -72,7 +72,20 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
              
              print(f'test FPS: \033[1;35m{render_fps:.5f}\033[0m')
              gaussExtractor.export_image(test_dir, far_plane = torch.tensor(args.far_plane))
-        
+             
+        if args.export_caminfos:
+            print("\nexport camera infos ...")
+            intrisics = {}
+            extrinsics = {}
+            from utils.mesh_utils import to_cam_open3d
+            for idx, cam_o3d in tqdm(enumerate(to_cam_open3d(scene.getTrainCameras())), desc="exporting caminfos"):
+                intrisics['{0:05d}'.format(idx)] = cam_o3d.intrinsic.intrinsic_matrix.tolist()
+                extrinsics['{0:05d}'.format(idx)] = cam_o3d.extrinsic.tolist()
+            with open(os.path.join(dataset.model_path, 'train', 'intrinsics.json'), "w") as f:
+                json.dump(intrisics, f, indent=2)
+            with open(os.path.join(dataset.model_path, 'train', 'extrinsics.json'), "w") as f:
+                json.dump(extrinsics, f, indent=2)
+
         if not args.skip_mesh:
             print("\nexport mesh ...")
             gaussExtractor.reconstruction(scene.getTrainCameras())
@@ -137,6 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip_train", action="store_true")
     parser.add_argument("--skip_test", action="store_true")
     parser.add_argument("--skip_mesh", action="store_true")
+    parser.add_argument("--export_caminfos", action="store_true")
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--mesh_type", default='TSDF', type=str, help='using TSDF or poisson reconstruction or ')
     parser.add_argument("--far_plane", type=float, default = 5.0)
