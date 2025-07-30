@@ -106,8 +106,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # evaluate mesh
-    scene = args.path.split('/')[-2]
-    mesh_gt = os.path.join(os.path.dirname(args.path), f'{scene}_vh_clean_2.ply')
+    mesh_gt = os.path.join(os.path.dirname(args.path), f'gt.ply')
     if args.mesh_idx == -1:
         mesh_pred = os.path.join(args.exps, 'mesh_2000.ply')
     else:
