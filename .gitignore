@@ -23,3 +23,4 @@ train_dtu_*.py
 train_tnt_*.py
 exps/
 */data*
+run*.py

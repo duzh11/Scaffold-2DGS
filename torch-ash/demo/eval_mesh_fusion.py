@@ -100,13 +100,8 @@ def evaluate_mesh(mesh_gt, mesh_pred,
 if __name__ == '__main__':
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
-    parser.add_argument("--path", type=str, required=True, help='path of dataset')
-    parser.add_argument('--exps', type=str, default='./logs/scene0050_00/examples')
+    parser.add_argument("--gt", type=str, required=True, help='path of dataset')
+    parser.add_argument('--pred', type=str, required=True, default='./logs/scene0050_00/mesh_filtered.ply')
     args = parser.parse_args()
 
-    # evaluate mesh
-    scene = args.path.split('/')[-2]
-    mesh_gt = os.path.join(os.path.dirname(args.path), f'{scene}_vh_clean_2.ply')
-    mesh_pred = os.path.join(args.exps, f'mesh_sensor_filtered_vs0.01.ply')
-
-    evaluate_mesh(mesh_gt, mesh_pred, show_errormap=True)
+    evaluate_mesh(args.gt, args.pred, show_errormap=True)

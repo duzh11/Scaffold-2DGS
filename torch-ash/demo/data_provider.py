@@ -36,6 +36,14 @@ def load_image(fname, im_type="image"):
     """
     Load image from file.
     """
+    if fname.suffix == ".npz":
+        # Versatile, could work for any image type
+        data = np.load(fname)['arr_0'].astype(np.float32)
+        if data.shape[0] in [1, 3]:  # normal or depth transposed
+            data = data.transpose((1, 2, 0))
+        if im_type == "depth":
+            data = data.squeeze()
+        return data
     if fname.suffix == ".npy":
         # Versatile, could work for any image type
         data = np.load(fname).astype(np.float32)
@@ -153,10 +161,11 @@ class ImageDataset(torch.utils.data.Dataset):
 
         if self.depth_type == "sensor":
             self.depth_fnames = get_image_files(
-                self.path, folders=["depth"], exts=["png", "pgm"]
+                self.path, folders=["depth"], exts=["png", "pgm", "npz"]
             )
-            self.depth_scales = np.ones(len(self.depth_fnames)) * 1e-3
-
+            #* comments the code below for fast modication
+            # self.depth_scales = np.ones(len(self.depth_fnames)) * 1e-3
+            self.depth_scales = np.ones(len(self.depth_fnames)) * 1.0
         elif self.depth_type == "learned":
             # TODO: change it accordingly, if it uses RealSense or TUM scales
             self.depth_fnames = get_image_files(
@@ -170,8 +179,12 @@ class ImageDataset(torch.utils.data.Dataset):
         else:
             raise ValueError(f"unknown depth type {self.depth_type}")
 
+        #* comments the code below for fast modication
+        # self.normal_fnames = get_image_files(
+        #     self.path, folders=["omni_normal"], exts=["npy"]
+        # )
         self.normal_fnames = get_image_files(
-            self.path, folders=["omni_normal"], exts=["npy"]
+            self.path, folders=["normal"], exts=["npz"]
         )
 
         # Load intrinsics and poses
@@ -214,8 +227,9 @@ class ImageDataset(torch.utils.data.Dataset):
             rgb_ims.append(load_image(self.image_fnames[i], "image"))
             if len(self.normal_fnames) > 0:
                 pbar.set_description(f"Loading {self.normal_fnames[i].name}")
-                normal_im = load_image(self.normal_fnames[i], "omni_normal")
-                normal_im = (normal_im - 0.5) * 2.0
+                normal_im = load_image(self.normal_fnames[i])
+                #* comments the code below for fast modication
+                # normal_im = (normal_im - 0.5) * 2.0
                 normal_im = normal_im / np.linalg.norm(
                     normal_im, axis=-1, keepdims=True
                 )
