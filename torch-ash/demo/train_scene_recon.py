@@ -275,6 +275,14 @@ if __name__ == "__main__":
     model.fuse_dataset(dataset, dilation, exps=f"logs/{scene}/")
     model.grid.gaussian_filter_(7, 1)
     mesh = model.marching_cubes()
+
+    bbox_min, bbox_max = model.grid.get_bbox()
+    bbox_lineset = o3d.geometry.LineSet.create_from_axis_aligned_bounding_box(
+        o3d.geometry.AxisAlignedBoundingBox(
+            min_bound=bbox_min.cpu().numpy(), max_bound=bbox_max.cpu().numpy()
+        )
+    )
+    o3d.io.write_line_set("logs/{scene}/bbox_filltered.ply", bbox_lineset)
     o3d.io.write_triangle_mesh(f"logs/{scene}/mesh_filtered.ply", mesh.to_legacy())
     o3d.io.write_line_set(f"logs/{scene}/occ_lineset_filtered.ply", model.occupancy_lineset().to_legacy())
 
